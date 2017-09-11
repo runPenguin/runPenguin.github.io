@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+  
+  
+  
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+    
+    <link href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+  
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.2" rel="stylesheet" type="text/css" />
+
+
+  <meta name="keywords" content="推荐系统，点击率预估，曝光不足," />
+
+
+
+
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=5.1.2" />
+
+
+
+
+
+
+<meta name="description" content="最近项目中需要做一些点击率预估的工作。不管是在电商推荐、广告推荐还是在Feeds流推荐中，我们都会遇到经典的“二八”原则：20%的热门商品、经典广告、资讯事件可能占据了80%的曝光流量。很多长尾商品、资讯等等可能曝光量是百、千数量级的。一个很经典的问题是: A广告曝光了10000次，用户点击了5000次；B广告曝光了100次，用户点击了50次。虽然两者的点击率都是50%，但是从统计的直觉来看，我们">
+<meta name="keywords" content="推荐系统，点击率预估，曝光不足">
+<meta property="og:type" content="article">
+<meta property="og:title" content="如何处理CTR预估中的样本曝光不足的问题">
+<meta property="og:url" content="http://yoursite.com/2017/08/28/如何处理CTR预估中的样本曝光不足的问题/index.html">
+<meta property="og:site_name" content="狂奔的企鹅">
+<meta property="og:description" content="最近项目中需要做一些点击率预估的工作。不管是在电商推荐、广告推荐还是在Feeds流推荐中，我们都会遇到经典的“二八”原则：20%的热门商品、经典广告、资讯事件可能占据了80%的曝光流量。很多长尾商品、资讯等等可能曝光量是百、千数量级的。一个很经典的问题是: A广告曝光了10000次，用户点击了5000次；B广告曝光了100次，用户点击了50次。虽然两者的点击率都是50%，但是从统计的直觉来看，我们">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2017-09-11T01:33:29.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="如何处理CTR预估中的样本曝光不足的问题">
+<meta name="twitter:description" content="最近项目中需要做一些点击率预估的工作。不管是在电商推荐、广告推荐还是在Feeds流推荐中，我们都会遇到经典的“二八”原则：20%的热门商品、经典广告、资讯事件可能占据了80%的曝光流量。很多长尾商品、资讯等等可能曝光量是百、千数量级的。一个很经典的问题是: A广告曝光了10000次，用户点击了5000次；B广告曝光了100次，用户点击了50次。虽然两者的点击率都是50%，但是从统计的直觉来看，我们">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '5.1.2',
+    sidebar: {"position":"left","display":"post","offset":12,"offset_float":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2017/08/28/如何处理CTR预估中的样本曝光不足的问题/"/>
+
+
+
+
+
+  <title>如何处理CTR预估中的样本曝光不足的问题 | 狂奔的企鹅</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">狂奔的企鹅</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/08/28/如何处理CTR预估中的样本曝光不足的问题/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="runPenguin">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/uploads/beiying.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="狂奔的企鹅">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">如何处理CTR预估中的样本曝光不足的问题</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2017-08-28T09:17:07+08:00">
+                2017-08-28
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/推荐系统，PaperWeekly/" itemprop="url" rel="index">
+                    <span itemprop="name">推荐系统，PaperWeekly</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>最近项目中需要做一些点击率预估的工作。不管是在电商推荐、广告推荐还是在Feeds流推荐中，我们都会遇到经典的“二八”原则：20%的热门商品、经典广告、资讯事件可能占据了80%的曝光流量。很多长尾商品、资讯等等可能曝光量是百、千数量级的。一个很经典的问题是: A广告曝光了10000次，用户点击了5000次；B广告曝光了100次，用户点击了50次。虽然两者的点击率都是50%，但是从统计的直觉来看，我们认为A的点击率为50%的可能性更大。由此来看，<strong>曝光不足的样本</strong>是我们预估点击率的第一道“拦路虎”。<em>本文着重探讨特征中只包含广告或者资讯固有的属性，而不考虑用户的特征背景下</em>， 就这周阅读的paper和所做的一点尝试说下自己的总结和思考。<br><a id="more"></a></p>
+<h2 id="分类还是回归，这是一个问题"><a href="#分类还是回归，这是一个问题" class="headerlink" title="分类还是回归，这是一个问题"></a>分类还是回归，这是一个问题</h2><p>首先谈一下关于点击率预估建模的问题。几乎所有的paper在点击率预估建模时，都倾向于采用分类的方式建模：即预测该用户点击还是不点击。这一点比较好理解：建模面对的场景就是从用户层面来看的，预测某个用户点击还是不点击。当然，我们还会面临另一个场景：<strong>根据过去统计的曝光点击流水，我们来预测当下某条广告、某个商品或者某条资讯的点击率</strong>。这是从样本的角度整体去思考问题的。这导致我们很自然地会思考：在这种情况下，我们到底是采用分类还是回归进行建模呢？</p>
+<h3 id="分类角度思考"><a href="#分类角度思考" class="headerlink" title="分类角度思考"></a>分类角度思考</h3><p>如果是采用分类，训练样本只能是一条条曝光点击流水，那么对同一个广告而言，既有用户点击，也有用户没点击（假设用户点击为正样本，用户未点击为负样本），这么做会不会导致正负样本学习效果抵消，从而使得模型学习不到任何有意义的特征呢？从统计的角度来看，我们这种担心也许是多余的。设想对于同一个广告（商品，资讯）有如下两种情况：</p>
+<ul>
+<li>正样本多于负样本或者相反</li>
+</ul>
+<p>这种情况下，模型会学习到样本比较多的一方的特征的效果。</p>
+<ul>
+<li>正样本和负样本数量差不多</li>
+</ul>
+<p>模型对于该条广告可能学习不到什么有意义的特征或者说很微弱的权重影响。但是在训练样本很大的情况下，这种微弱的权重影响会慢慢聚成一个“放大器”的功效，从而使得模型也能习得特征。</p>
+<h3 id="回归角度思考"><a href="#回归角度思考" class="headerlink" title="回归角度思考"></a>回归角度思考</h3><p>对于从样本角度思考点击率的场景，更加符合直觉的建模思路是使用回归的方法。通常一些算法工程师一遇到回归问题，很自然会想到最简单的线性回归，Support Vector Regression，稍微复杂一点的会选择非线性模型，比如GBDT中的回归树等等。这些方法虽然不会错，但是考虑到我们这里问题的特殊性：点击率预估，那么其值域范围肯定是在[0,1]，通常也很难取到闭区间。让我们想想逻辑回归—logistic regression。我们通常习惯把逻辑回归直接用于分类问题，原因也恰恰是通过sigmoid函数，能将全体实数域映射到0到1之间，再通过设定一定的阈值，从而给出结果为0或者为1。但它既然能叫做”<strong>逻辑回归</strong>“，这暗示着我们能也可以用它来对回归问题进行建模，当然前提条件是所建模的问题其值域刚好是在[0,1]之间的。有人会问，如果建模的问题不是在[0,1]之间呢，就一定不能用了吗？当然可以，那么就需要聪明的你根据业务问题进行合理的转换了。文献<a href="#微软">2</a>采用的模型即为逻辑回归，具体关于该paper的详细分析将在后面阐述。</p>
+<p>综上所述，不管是采用分类，还是回归，两者应该都是均可行的。后来在仔细思考后，<strong>其实如果用logistic regreesion 来考虑的话，分类和回归两者本质其实是一样的</strong>。关键点在于两者训练样本的挑选，以及后续采用什么样的评价指标来衡量的问题。</p>
+<h2 id="修正还是舍弃，这是一个选择"><a href="#修正还是舍弃，这是一个选择" class="headerlink" title="修正还是舍弃，这是一个选择"></a>修正还是舍弃，这是一个选择</h2><p>下面开始着重讨论如何处理样本曝光不足的问题。具体而言，将详细介绍文献 <a href="#Beta分布">1</a> 和文献 <a href="#微软">2</a> 的处理方式。</p>
+<h3 id="修正法"><a href="#修正法" class="headerlink" title="修正法"></a>修正法</h3><h4 id="建模背景"><a href="#建模背景" class="headerlink" title="建模背景"></a>建模背景</h4><p>来自雅虎的文献 <a href="#Beta分布">1</a> 研究对象为在线广告，作者称曝光明显不充分的广告展现为“<strong>Rare Event（罕见事件）</strong>”。在广告推荐这一个具体场景下，我们有如下注意的点：</p>
+<ul>
+<li>一个广告商账号可能会发若干个广告。</li>
+<li>同一个竞价词下面会对应若干个广告。</li>
+</ul>
+<p>基于第一个点，一个很容易想到的假设是：对于同一个广告商而言，可以利用TA所发的其他曝光量比较大的广告来对曝光不足的广告做一个先验证。基于第二个点，我们也容易想到利用同一个竞价词下的曝光充足的广告来对曝光不足的广告做一个先验。这种现象原文称之为“<strong>Data Hierachy</strong>”，即数据层次说。引用原文如下：</p>
+<blockquote>
+<p>In general, events close in data hierarchy or in the same cluster share certain commondality compared to the events far in hierarchy or in different clusters. Information from “close” events can be utilized to enrich what we can learn from rare events themselves.</p>
+</blockquote>
+<p>作者还提到热点的影响问题。对于同一个广告而言，如果我们记录了每次曝光和点击的时间，比如说今天曝光了多少次，昨天曝光了多少次，前天曝光了多少次，那么我们可以做一定的指数衰减，得到该广告的加权CTR。事实上, 上述两种方案既可以单独使用，也可以一起使用。原文特别提到“<strong>We find the benefits are additive instead of beging cancelled out by each other</strong>”。</p>
+<h4 id="算法解析"><a href="#算法解析" class="headerlink" title="算法解析"></a>算法解析</h4><p>有了以上两点方案后，作者提出了利用Beta分布来进行修正的算法。具体分析如下：我们考虑同一个广告商所发布的\(N\)个广告，其对应点击率概率分布为\((r_1,r_2,…,r_N)\)，产生对应的点击数分别为\((C_1, C_2,…,C_N)\), 显然对应的\(C_i\)满足二项分布\(Binormial(I_i, r_i)\)。其中\(I_i\)表示第i个广告的曝光数。值得注意的是，<strong>对于所有的广告商而言，我们也可以把\(r_i\)也看成来自某种分布的采样</strong>。简单来说，\(r_i\)是对应的\(C_i\)的参数，而提到的某种分布下的参数又构成了产生\(r_i\)的参数，可以认为是超参。为了问题的方便求解，我们一般会尽可能保证超参下的分布和本来的分布构成<em>共轭</em>。在统计学里面，Beta分布和Binormial分布就是一组典型的共轭。（这也就是为什么作者可以采用Beta分布来做的原因。当然，你也可以考虑其他的共轭来解决其他的建模问题，这完全取决于怎么建模。）于是，我们认为点击率满足\(Beta(\alpha, \beta)\)。我们对于\(r_i\)所能够获取的信息，一方面来自于统计得到的\((I_i, C_i)\), 同时作为一个整体，也来自于同一个账号下其他广告的CTR，而这一部分的信息已经隐含在超参\(\alpha\)和\(\beta\)中。前面提到过之所以需要满足共轭先验，是为了问题的求解方便。简单来说，就是二项分布和Beta分布的共轭，使得我们能够采用最大似然估计来计算边缘似然函数，从而求解超参。一旦有了估计超参\(\hat{\alpha},  \hat{\beta}\)，那么对于\(r_i\)的后验估计即为：<br>$$ \hat{r_i} = \frac{C_i + \hat{\alpha}}{I_i + \hat{\alpha} + \hat{\beta}}$$</p>
+<p>修正后的\(\hat{r}_i\)相比于没有修正的原CTR其方差更小，并且更加稳定。在对CTR进行平滑之前，作者充分利用了前面提到的<strong>数据分层</strong>的思想，假设对于含有N个广告的广告商而言，其满足Beta分布；另外，对于每个广告而言，其点击分布又满足二项分布。即有：</p>
+<ul>
+<li>广告样本CTR \(r\)服从\(Beta(\alpha, \beta)\)分布，即 \(p(r|\alpha, \beta)=\frac{\mathbf{\Gamma}(\alpha+\beta)}{\mathbf{\Gamma}(\alpha)\mathbf{\Gamma}(\beta)}r^{\alpha-1}(1-r)^{\beta-1}\)</li>
+<li>样本点击 \(C\)服从二项分布\(Binomial(I,r)\), 即\(P(C|I,r) \propto r^{C}(1-r)^{I-C}\)</li>
+</ul>
+<p>根据以上，对于这N个广告的所有点击的似然函数为：</p>
+<p>$$<br>\begin {aligned}<br>P（C_1,C_2,…,C_N | I_1, I_2,…,I_N, \alpha, \beta) &amp;= \prod_{i=1}^{N}P(C_i | I_i, \alpha, \beta) \\<br>&amp;= \prod_{i=1}^{N}\int_{r_i}P(C_i,r_i|I_i,\alpha,\beta)dr_i \\<br>&amp;= \prod_{i=1}^{N}\int_{r_i}P(C_i|I_i,r_i)p(r_i|\alpha,\beta)dr_i \propto \prod_{i=1}^{N}\int_{r_i}r_i^{C_i}(1-r_i)^{I_i-C_i}r_i^{\alpha-1}(1-r_i)^{\beta-1}dr_i \\<br>&amp;= \prod_{i=1}^{N}\frac{\mathbf{\Gamma}(\alpha+\beta)}{\mathbf{\Gamma}(I_i+\alpha+\beta)}\frac{\mathbf{\Gamma(C_i+\alpha)}}{\mathbf{\Gamma}(\alpha)}\frac{\mathbf{\Gamma}(I_i-C_i+\beta)}{\mathbf{\Gamma}(\beta)}<br>\end {aligned}<br>$$</p>
+<p>接下来因为要计算最大似然，所以对上述式子取对数后，分别对\(\alpha\)和\(\beta\)求导，令导数为0，即可求得\(\alpha\)和\(\beta\)的最优解。特别注意的是，求解过程中会遇到需要对\(ln\mathbf{\Gamma}(x)\)求导, 我们令：<br>$$<br>\Psi(x) = \frac{d}{dx}ln\mathbf{\Gamma}(x)<br>$$<br>最后根据Bernardo算法求解\(\Psi(x)\)和不动点法求最大值，于是得到的迭代公式如下：<br>$$<br>\alpha^{new} = \alpha \frac{\sum_{i=1}^{N}[\Psi(C_i+\alpha)-\Psi(\alpha)]}{\sum_{i=1}^{N}[\Psi(I_i+\alpha+\beta)-\Psi(\alpha+\beta)]} \\<br>\beta^{new} = \beta \frac{\sum_{i=1}^{N}[\Psi(I_i-C_i+\beta)-\Psi(\beta)]}{\sum_{i=1}^{N}[\Psi(I_i+\alpha+\beta)-\Psi(\alpha+\beta)]}<br>$$<br>具体迭代停止条件一般可设置迭代若干次或者\(\alpha\)和\(\beta\)的变化量小于某个设定的阈值即可。</p>
+<h4 id="评价指标"><a href="#评价指标" class="headerlink" title="评价指标"></a>评价指标</h4><p>文献提供了两种评价指标：第一种是常见的MSE，用来衡量估计的CTR和真实经验CTR之间的均方误差。第二种是考虑到本身预估CTR是来自二项分布，所以使用了KL散度来进行衡量。具体来说，若真实CTR \(r\)的概率分布为\(P(r)\),预估CTR \(\hat{r}\)的概率分布为\(Q(\hat{r})\), 那么两者的KL散度定义为：<br>$$<br>D_{KL}(P(r)||Q(\hat{r}))= rlog\frac{r}{\hat{r}}+(1-r)log\frac{1-r}{1-\hat{r}}<br>$$<br>当然，KL散度缺点在于当一些极端case出现的时候，比如说\(r=0\)，这种情况在点击率预估中太常见了。于是有基于此，文献过滤掉了这些极端case。在实验结果阶段，文献考虑的是点击了至少<em>10000</em>次的样本，从这个情况看，其实这和我们在工程中经常遇到的问题是有所区别的，因为在真实场景下，既然一篇文章都已经被点击了至少10000次，那么其算出来的经验CTR是相对来说比较置信的。当然，文献1给我们带来的启发不仅仅只是在贝叶斯框架下的点击率平滑，而且在指数衰减方面也提供了一定的参考。</p>
+<h3 id="舍弃法"><a href="#舍弃法" class="headerlink" title="舍弃法"></a>舍弃法</h3><p>文献 <a href="#微软">2</a> 在对新广告的点击率预估中，考虑到低于100次曝光的广告有很大的干扰噪声，所以直接就过滤掉了这些广告样本。但在真实场景下，我们其实很希望这些广告的特征也要能被算法习得，从这个角度来看，其实可以考虑对它们进行平滑或者取Wislon置信下限的方式来考虑。<strong>说到Wislon置信下限，这是reddit网站很早采用的一种方法，这个方法的缺点在于会对曝光不足的样本呈现一定的“打压”态势</strong>。下面也具体来说说文献 <a href="#微软">2</a>的建模方法和值得我们借鉴的地方。</p>
+<h4 id="建模方法"><a href="#建模方法" class="headerlink" title="建模方法"></a>建模方法</h4><p>来自微软的这边文献 <a href="#微软">2</a> 的样本选取是已经经过统计去重的广告样本，也就是说每条广告在整个样本集中出现一次。需要进行拟合的是其真实经验CTR。在这个背景下，文章采用logistic regression得到的概率结果直接进行拟合，而不再是考虑设定阈值后，给出0/1判别。我们一般会认为在这种回归问题下，损失函数的选择一般都会是平均平方误差。可有趣的是，文章是直接用在分类问题中采用的cross-entropy（交叉熵）作为损失函数，对所有样本做个平均即为：<br>$$<br>loss = -\frac{1}{N}\sum_{i=1}^{N}ylog\hat{y}+(1-y)log(1-\hat{y})<br>$$</p>
+<p>这里顺便提一下关于信息熵，交叉熵和相对熵的概念和区别。信息熵的本质是香农信息量log(1/p)的期望，即有\(H(p)=-\sum_{x}p(x)logp(x)\)。交叉熵用通信里面的编码概念来理解就是：使用估算的编码后，得到的平均编码长度，即有\(H(p,q)=-\sum_{x}p(x)logq(x)\)，其中\(p\)是真实概率分布，\(q\)是估计的概率分布。而相对熵就是我们之前提过的KL散度，是用来度量两个分布之间到底有多不相似，即有\(KL(p||q)=-\sum_{x}log\frac{q(x)}{p(x)}\)。要特别注意的是，KL散度<strong>不满足</strong>对称性。通过简单的运算，我们可以得到如下关系:<br>$$<br>H(p,q) = H(p) + KL(p||q)<br>$$<br>在机器学习中，一般而言H(p)都是固定的，或者说对于要优化的函数而言，是个固定量，那么此时交叉熵就和相对熵是等价的。</p>
+<p>文献中提到一些特征工程处理的一些小技巧，这个非常值得我们借鉴和学习。</p>
+<ul>
+<li>对特征进行归一化，均值为0，方差为1。这个处理应该是非常常见的。对于一些明显的outlier，比如说超过了5倍方差，则直接截断为5倍。</li>
+<li>归一化得到的特征mean和variance只在训练集中获得，并将其直接用于测试集。而不是说测试集也单独搞一套。</li>
+<li>对于每一个特征 \(f_i\)，都额外增加了特征 \(\log(1+f_i)\)和 \(f_i^2\)。 这个我理解为在logistic regression，增加些非线性特征。当然更好的尝试，也可以根据业务场景和自己的理解，对一些特征做人工特征组合生成新的特征。</li>
+</ul>
+<h4 id="特征处理细节展现"><a href="#特征处理细节展现" class="headerlink" title="特征处理细节展现"></a>特征处理细节展现</h4><p>在对广告预估点击率问题中，文章提出了不少有趣的特征，这些特征也很值得我们学习。比如说广告里面分词后的Term CTR。这个潜在的假设就是相同或者相似的竞价词的CTR对于预测CTR是有用的。另外，还有相关词CTR、广告的质量（比如说广告里面标题有多少词，正文有多少词，标题是否有大写字母，是否有感叹号，钱币符号等等。再比如说吸引度方面，对于广告而言，是不是出现了”购买”，“参与”，“报名”等等词语。）最后，还可以增加unigram的特征：对于训练集所有广告的标题分词后，分析出前top 10000词，然后比对样本中，是否出现了这些词，如果有则为1，否则为0。以上这些特征处理的细节，也是我们经常在特征工程中所遇到的，值得我们借鉴。</p>
+<h4 id="处理结果细节"><a href="#处理结果细节" class="headerlink" title="处理结果细节"></a>处理结果细节</h4><p>文中还提到了一个非常特别并且有意思的细节，在模型训练好以后，我们得到了预估CTR，然后基于已有的曝光和展现，最终作者进行修正，得到最终的预估CTR：<br>$$<br>\hat{p} = \frac{\alpha p_{0} + clicks}{\alpha + impressions}<br>$$<br>其中\(p_0\)表示模型预估出来的先验CTR，\(\alpha\)表示先验的强度，物理意义在于假设我们已经展现了\(\alpha\)次，那么其先验估计的点击数则为\(\alpha p_0\)。这个做法颇有点类似上文提到的beta平滑的思路，这是另一种平滑思路。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>通过对这两篇文章的分析和自己在做点击率预估的一点思考，发现即使是如此细小的问题，也是有很多直接我们学习和借鉴的地方。另外，采用logistic regression 好处在于简单容易实现，缺点在于需要做一些人工特征工程，包括一些组合特征等等，这些可以考虑用GBDT以及FM来进行优化。在Kaggle上面有些点击率预估比赛中，有一个获得冠军的队伍就是采用了FFM，这些都可以细细看看，然后学习人家的处理方式。</p>
+<h2 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h2><p></p><p id="Beta分布"> 1. Wang X, Li W, Cui Y, et al. Click-through rate estimation for rare events in online advertising[J]. Online Multimedia Advertising: Techniques and Technologies, 2010: 1-12.</p>
+<p></p><p id="微软"> 2. Richardson M, Dominowska E, Ragno R. Predicting clicks: estimating the click-through rate for new ads[C]//Proceedings of the 16th international conference on World Wide Web. ACM, 2007: 521-530.</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/推荐系统，点击率预估，曝光不足/" rel="tag"># 推荐系统，点击率预估，曝光不足</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+  <div class="comments" id="comments">
+    
+  </div>
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap" >
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+          <img class="site-author-image" itemprop="image"
+               src="/uploads/beiying.jpg"
+               alt="runPenguin" />
+          <p class="site-author-name" itemprop="name">runPenguin</p>
+           
+              <p class="site-description motion-element" itemprop="description">关于机器学习的碎碎念</p>
+          
+        </div>
+        <nav class="site-state motion-element">
+
+          
+            <div class="site-state-item site-state-posts">
+            
+              <a href="/archives">
+            
+                <span class="site-state-item-count">1</span>
+                <span class="site-state-item-name">日志</span>
+              </a>
+            </div>
+          
+
+          
+            
+            
+            <div class="site-state-item site-state-categories">
+              <a href="/categories/index.html">
+                <span class="site-state-item-count">1</span>
+                <span class="site-state-item-name">分类</span>
+              </a>
+            </div>
+          
+
+          
+            
+            
+            <div class="site-state-item site-state-tags">
+              <a href="/tags/index.html">
+                <span class="site-state-item-count">1</span>
+                <span class="site-state-item-name">标签</span>
+              </a>
+            </div>
+          
+
+        </nav>
+
+        
+
+        <div class="links-of-author motion-element">
+          
+        </div>
+
+        
+        
+
+        
+        
+
+        
+
+
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#分类还是回归，这是一个问题"><span class="nav-number">1.</span> <span class="nav-text">分类还是回归，这是一个问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#分类角度思考"><span class="nav-number">1.1.</span> <span class="nav-text">分类角度思考</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#回归角度思考"><span class="nav-number">1.2.</span> <span class="nav-text">回归角度思考</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#修正还是舍弃，这是一个选择"><span class="nav-number">2.</span> <span class="nav-text">修正还是舍弃，这是一个选择</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#修正法"><span class="nav-number">2.1.</span> <span class="nav-text">修正法</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#建模背景"><span class="nav-number">2.1.1.</span> <span class="nav-text">建模背景</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#算法解析"><span class="nav-number">2.1.2.</span> <span class="nav-text">算法解析</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#评价指标"><span class="nav-number">2.1.3.</span> <span class="nav-text">评价指标</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#舍弃法"><span class="nav-number">2.2.</span> <span class="nav-text">舍弃法</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#建模方法"><span class="nav-number">2.2.1.</span> <span class="nav-text">建模方法</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#特征处理细节展现"><span class="nav-number">2.2.2.</span> <span class="nav-text">特征处理细节展现</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#处理结果细节"><span class="nav-number">2.2.3.</span> <span class="nav-text">处理结果细节</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结"><span class="nav-number">3.</span> <span class="nav-text">总结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考文献"><span class="nav-number">4.</span> <span class="nav-text">参考文献</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright" >
+  
+  &copy; 
+  <span itemprop="copyrightYear">2017</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">runPenguin</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+  <span class="post-meta-divider">|</span>
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" href="https://github.com/iissnan/hexo-theme-next">NexT.Pisces</a> v5.1.2</div>
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+
+  
+  <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+
+  
+  <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.2"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.2"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.2"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.2"></script>
+
+
+
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.2"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.2"></script>
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.2"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.2"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.2"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+
+  
+
+  
+
+</body>
+</html>
